@@ -11,12 +11,16 @@ enum Camera_Movement {
     FORWARD,
     BACKWARD,
     LEFT,
-    RIGHT
+    RIGHT,
+    ARROW_LEFT,
+    ARROW_RIGHT,
+    ARROW_UP,
+    ARROW_DOWN,
 };
 
 // Default camera values
 const float YAW = -90.0f;
-const float PITCH = 0.0f;
+const float PITCH = -10.0f;
 const float SPEED = 2.5f;
 const float SENSITIVITY = 0.1f;
 const float ZOOM = 45.0f;
@@ -98,6 +102,20 @@ public:
         }
 
         // update Front, Right and Up Vectors using the updated Euler angles
+        updateCameraVectors();
+    }
+    void ProcessKeyboardRotation(Camera_Movement direction, float deltaTime)
+    {
+        float movement = SENSITIVITY * 0.2;
+        if (direction == ARROW_UP)
+            Pitch += movement;
+        if (direction == ARROW_DOWN)
+            Pitch -= movement;
+        if (direction == ARROW_LEFT)
+            Yaw -= movement;
+        if (direction == ARROW_RIGHT)
+            Yaw += movement;
+
         updateCameraVectors();
     }
 

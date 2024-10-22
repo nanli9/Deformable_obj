@@ -13,13 +13,15 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow* window);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
+vec3 unProject(int mouseX, int mouseY, float depth);
 
 // settings
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
 // camera
-Camera camera(glm::vec3(0.0f, 0.0f, 6.0f));
+Camera camera(glm::vec3(0.0f, 2.0f, 10.0f));
 float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
 bool firstMouse = true;
@@ -55,14 +57,14 @@ int main()
         return -1;
     }
     glfwMakeContextCurrent(window);
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-    //glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetScrollCallback(window, scroll_callback);
-
+    glfwSetMouseButtonCallback(window, mouse_button_callback);
     // tell GLFW to capture our mouse
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    //glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     // glad: load all OpenGL function pointers
     // ---------------------------------------
@@ -85,7 +87,7 @@ int main()
 
     //Mesh mesh(parser);
     //printf("%d\n", mesh.vertices.size());
-    soft = new softBody(parser, vec3(0, 0, 0), vec3(0, 0, 0), vec3(0, -9.8, 0), 0.2);
+    soft = new softBody(parser, vec3(0, 0, 0), vec3(0, 0, 0), vec3(0, -9.8, 0), 0.8);
     // build and compile our shader 
     // ------------------------------------
     Shader lightingShader("shader/vertex_shader_Phong.glsl", "shader/fragment_shader_Phong.glsl");
@@ -133,20 +135,20 @@ int main()
         std::cout << "Cursor position: " << xpos << ", " << ypos << std::endl;*/
 
 
-        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClearColor(0.529f, 0.808f, 0.922f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
         mat4 view = camera.GetViewMatrix();
         mat4 model = mat4(1.0f);
-        model = translate(model, vec3(0,-3,0));
+        model = translate(model, vec3(0,-2.5,0));
         model = scale(model, vec3(2, 2, 2));
         lightingShader.setMat4("projection", projection);
         lightingShader.setMat4("view", view);
 
         lightingShader.setVec3("lightPos", lightPos);
         lightingShader.setVec3("eye", camera.Position);
-        lightingShader.setVec3("color", vec3(0.0f, 0.0f, 0.0f));
+        lightingShader.setVec3("color", vec3(0.827f, 0.827f, 0.827f));
 
         glBindVertexArray(planeVAO);
         lightingShader.setMat4("model", model);
@@ -163,7 +165,7 @@ int main()
         /*for (int i = 0; i < mesh.vertices.size(); i++)
             mesh.vertices[i].Pos.y -= deltaTime;*/
 
-        soft->setupMesh();
+        soft->update(deltaTime);
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
         glfwSwapBuffers(window);
@@ -194,6 +196,16 @@ void processInput(GLFWwindow* window)
         camera.ProcessKeyboard(LEFT, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         camera.ProcessKeyboard(RIGHT, deltaTime);
+
+    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+        camera.ProcessKeyboardRotation(ARROW_LEFT, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+        camera.ProcessKeyboardRotation(ARROW_RIGHT, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+        camera.ProcessKeyboardRotation(ARROW_UP, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+        camera.ProcessKeyboardRotation(ARROW_DOWN, deltaTime);
+
     if (glfwGetKey(window, GLFW_KEY_H) == GLFW_PRESS)
         soft->squash();
 
@@ -212,7 +224,7 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
 {
     float xpos = static_cast<float>(xposIn);
     float ypos = static_cast<float>(yposIn);
-
+   
     if (firstMouse)
     {
         lastX = xpos;
@@ -226,12 +238,47 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
     lastX = xpos;
     lastY = ypos;
 
-    camera.ProcessMouseMovement(xoffset, yoffset);
+    //camera.ProcessMouseMovement(xoffset, yoffset);
+    
 }
-
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
+    if (action == GLFW_PRESS) {
+        if (button == GLFW_MOUSE_BUTTON_LEFT) {
+            double mouseX, mouseY;
+            glfwGetCursorPos(window, &mouseX, &mouseY);
+            float depth;
+            glReadPixels(static_cast<int>(mouseX), static_cast<int>(SCR_HEIGHT - mouseY), 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &depth);
+            double x, y, z;
+            vec3 Pos = unProject(static_cast<int>(mouseX), static_cast<int>(mouseY),depth);
+            cout << depth << endl;
+            cout << Pos.x << " " << Pos.y <<" "<< Pos.z << endl;
+            std::cout << "Left mouse button pressed at (" << mouseX << ", " << mouseY << ")\n";
+        }
+        else if (button == GLFW_MOUSE_BUTTON_RIGHT) {
+            double mouseX, mouseY;
+            glfwGetCursorPos(window, &mouseX, &mouseY);
+            std::cout << "Right mouse button pressed at (" << mouseX << ", " << mouseY << ")\n";
+        }
+    }
+}
 // glfw: whenever the mouse scroll wheel scrolls, this callback is called
 // ----------------------------------------------------------------------
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
     camera.ProcessMouseScroll(static_cast<float>(yoffset));
+}
+vec3 unProject(int mouseX, int mouseY, float depth)
+{
+    vec3 pos;
+    mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+    mat4 view = camera.GetViewMatrix();
+    mat4 model = mat4(1.0f);
+    float x = (2.0f * mouseX) / SCR_WIDTH - 1.0f;
+    float y = 1.0f - (2.0f * mouseY) / SCR_HEIGHT;
+    vec4 clipCoord(x, y, depth,1.0f);
+    vec4 projectCoord =  inverse(projection) * clipCoord;
+    vec4 eyeCoord = inverse(view) * projectCoord;
+    vec4 worldCoord = inverse(model) * eyeCoord;
+
+    return vec3(worldCoord) / worldCoord.w;
 }
