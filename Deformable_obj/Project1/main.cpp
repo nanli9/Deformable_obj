@@ -34,6 +34,7 @@ float lastFrame = 0.0f;
 vec3 lightPos(5.0f, 4.0f, 6.0f);
 OBJParser parser;
 softBody* soft;
+bool isDragging = false;
 int main()
 {
 #ifdef __APPLE__
@@ -87,7 +88,7 @@ int main()
 
     //Mesh mesh(parser);
     //printf("%d\n", mesh.vertices.size());
-    soft = new softBody(parser, vec3(0, 0, 0), vec3(0, 0, 0), vec3(0, -9.8, 0), 0.8);
+    soft = new softBody(parser, vec3(0, 0, 0), vec3(0, 0, 0), vec3(0, -9.8, 0), 0.01);
     // build and compile our shader 
     // ------------------------------------
     Shader lightingShader("shader/vertex_shader_Phong.glsl", "shader/fragment_shader_Phong.glsl");
@@ -222,37 +223,50 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
 {
-    float xpos = static_cast<float>(xposIn);
-    float ypos = static_cast<float>(yposIn);
-   
-    if (firstMouse)
+    if (isDragging)
     {
+        float xpos = static_cast<float>(xposIn);
+        float ypos = static_cast<float>(yposIn);
+
+        if (firstMouse)
+        {
+            lastX = xpos;
+            lastY = ypos;
+            firstMouse = false;
+        }
+
+        float xoffset = xpos - lastX;
+        float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
         lastX = xpos;
         lastY = ypos;
-        firstMouse = false;
+
+        double mouseX, mouseY;
+        glfwGetCursorPos(window, &mouseX, &mouseY);
+        float depth;
+        glReadPixels(static_cast<int>(mouseX), static_cast<int>(SCR_HEIGHT - mouseY), 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &depth);
+        double x, y, z;
+        vec3 Pos = unProject(static_cast<int>(mouseX), static_cast<int>(mouseY), depth);
+        cout << depth << endl;
+        cout << Pos.x << " " << Pos.y << " " << Pos.z << endl;
+        std::cout << "Left mouse button pressed at (" << mouseX << ", " << mouseY << ")\n";
+        if (length(Pos - soft->s.center) < soft->s.radius)
+        {
+            cout << "clicked" << endl;
+            soft->grab(Pos);
+        }
+
+        
+
+        //camera.ProcessMouseMovement(xoffset, yoffset);
     }
-
-    float xoffset = xpos - lastX;
-    float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
-
-    lastX = xpos;
-    lastY = ypos;
-
-    //camera.ProcessMouseMovement(xoffset, yoffset);
+    
     
 }
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
     if (action == GLFW_PRESS) {
         if (button == GLFW_MOUSE_BUTTON_LEFT) {
-            double mouseX, mouseY;
-            glfwGetCursorPos(window, &mouseX, &mouseY);
-            float depth;
-            glReadPixels(static_cast<int>(mouseX), static_cast<int>(SCR_HEIGHT - mouseY), 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &depth);
-            double x, y, z;
-            vec3 Pos = unProject(static_cast<int>(mouseX), static_cast<int>(mouseY),depth);
-            cout << depth << endl;
-            cout << Pos.x << " " << Pos.y <<" "<< Pos.z << endl;
-            std::cout << "Left mouse button pressed at (" << mouseX << ", " << mouseY << ")\n";
+            isDragging = true;
+            
         }
         else if (button == GLFW_MOUSE_BUTTON_RIGHT) {
             double mouseX, mouseY;
@@ -260,6 +274,8 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
             std::cout << "Right mouse button pressed at (" << mouseX << ", " << mouseY << ")\n";
         }
     }
+    else if (action == GLFW_RELEASE)
+        isDragging = false;
 }
 // glfw: whenever the mouse scroll wheel scrolls, this callback is called
 // ----------------------------------------------------------------------
@@ -274,8 +290,8 @@ vec3 unProject(int mouseX, int mouseY, float depth)
     mat4 view = camera.GetViewMatrix();
     mat4 model = mat4(1.0f);
     float x = (2.0f * mouseX) / SCR_WIDTH - 1.0f;
-    float y = 1.0f - (2.0f * mouseY) / SCR_HEIGHT;
-    vec4 clipCoord(x, y, depth,1.0f);
+    float y = 1.0f - (2.0f *  mouseY) / SCR_HEIGHT;
+    vec4 clipCoord(x, y, 2*depth-1,1.0f);
     vec4 projectCoord =  inverse(projection) * clipCoord;
     vec4 eyeCoord = inverse(view) * projectCoord;
     vec4 worldCoord = inverse(model) * eyeCoord;

@@ -6,6 +6,7 @@
 #include "tetgen.h"
 #include <set>
 
+
 struct Tetrahedra
 {
 	int indices[4];
@@ -25,7 +26,7 @@ struct Edge
 };
 struct tetrahedra_vertex
 {
-	vec3 pos;
+	glm::vec3 pos;
 	vec3 pre_pos;
 	vec3 velocity;
 };
@@ -43,6 +44,7 @@ public:
 	float compliance;
 	Sphere s;
 	tetgenio in, out;
+	vector<float> inverseMass;
 	vector<Tetrahedra> tetrahedras;
 	vector<tetrahedra_vertex> tetrahedra_vertices;
 	set<Edge> edges;
@@ -57,6 +59,8 @@ public:
 	void addEdge(int v1,int v2);
 	void getSurfaceMesh();
 	void GenSphere();
+	vec3* getTetrahedrasGradient(vec3 p1, vec3 p2, vec3 p3, vec3 p4);
+	void grab(vec3 p);
 };
 
 
