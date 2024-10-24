@@ -100,10 +100,6 @@ softBody::softBody(OBJParser parser,vec3 pos, vec3 velocity,vec3 acceleration,fl
 	}
 	getSurfaceMesh();
 	GenSphere();
-	/*for (auto& v : vertices)
-	{
-		v.Pos.y = 0;
-	}*/
 }
 void softBody::addEdge(int v1, int v2)
 {
@@ -117,19 +113,10 @@ void softBody::addEdge(int v1, int v2)
 }
 void softBody::preSolve(float dt, float height)
 {
-	/*float b = 0;
-	for (auto& x : inverseMass)
-	{
-		if (x == 0)
-		{
-			return;
-		}
-		b = b > x ? b : x;
-	}*/
 	for (auto& v : tetrahedra_vertices)
 	{
 		v.pre_pos = v.pos;
-		//v.velocity.y -= dt * 9.8 * 0.2;
+		v.velocity.y -= dt * 9.8 * 0.2;
 		v.pos += dt * v.velocity;
 		/*if (length(v.velocity) > 0)
 			continue;*/
@@ -151,24 +138,19 @@ void softBody::postSolve(float dt)
 }
 void softBody::solve(float dt)
 {
-	solveDistance(dt);
-	solveVolume(dt);
+	solveDistance(0.0000000001f,dt); //0.00000001f
+	solveVolume(0.0f,dt);
 }
 
 void softBody::squash()
 {
 	for (auto& v : tetrahedra_vertices)
-	{
-		/*float randomFloat = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
-		tetrahedra_vertices[302].pos.x = tetrahedra_vertices[302].pos.x - randomFloat / 100000;*/
-	}
-	float randomFloat = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
-	tetrahedra_vertices[0].pos.x = tetrahedra_vertices[0].pos.x - randomFloat / 5;
+		v.pos.x = s.center.x;
 
 }
-void softBody::solveDistance(float dt)
+void softBody::solveDistance(float edgeCompliance, float dt)
 {
-	float alpha = 0.0f / (dt * dt);
+	float alpha = edgeCompliance / (dt * dt);
 	for (auto& e : edges)
 	{
 		vec3 gradient = tetrahedra_vertices[e.indices[0]].pos - tetrahedra_vertices[e.indices[1]].pos;
@@ -180,17 +162,15 @@ void softBody::solveDistance(float dt)
 			continue;
 		gradient = normalize(gradient);
 		float C = len - e.restLen;
-		float s = C / (w+alpha);
-		/*if (s > 0)
-			continue;*/
+		float s =  C / (w+alpha);
 		tetrahedra_vertices[e.indices[0]].pos -= gradient * s * w0;
 		tetrahedra_vertices[e.indices[1]].pos += gradient * s * w1;
 	}
 }
 
-void softBody::solveVolume(float dt)
+void softBody::solveVolume(float volumeCompliance, float dt)
 {
-	float alpha = 0.0f / (dt * dt);
+	float alpha = volumeCompliance / (dt * dt);
 	for (int i = 0; i < tetrahedras.size(); i++)
 	{
 		//out.tetrahedronlist
@@ -206,11 +186,6 @@ void softBody::solveVolume(float dt)
 		{
 			w += inverseMass[tetrahedras[i].indices[j]] * length(Jacobian[j]) * length(Jacobian[j]);
 		}
-		//this.volIdOrder = [[1,3,2], [0,2,3], [0,3,1], [0,1,2]];
-		/*vec3 v1(0.001, 0.001, 0.00001);
-		vec3 v2(0.01, 0.01, 0.0001);
-		vec3 v3 = cross(v1, v2);
-		float x = length(v3);*/
 		if (c > 1)
 			continue;
 		if (w == 0.0f)
@@ -236,6 +211,7 @@ void softBody::update(float dt)
 		postSolve(sub_dt);
 		getSurfaceMesh();
 		setupMesh();
+		GenSphere();
 	}
 	
 }
@@ -300,8 +276,6 @@ void softBody::GenSphere()
 			s.center += dir * (d-s.radius) / 2.0f;
 			s.radius = new_radius;
 		}
-
-
 	}
 
 }
@@ -312,16 +286,9 @@ vec3* softBody::getTetrahedrasGradient(vec3 p1, vec3 p2, vec3 p3, vec3 p4)
 	Jacobian[1] = (1.0f / 6) * cross(p3 - p1, p4 - p1);
 	Jacobian[2] = (1.0f / 6) * cross(p4 - p1, p2 - p1);
 	Jacobian[3] = (1.0f / 6) * cross(p2 - p1, p3 - p1);
-	for (int i = 0; i < 4; i++)
-	{
-		if (length(Jacobian[i]) < 1e-6)
-		{
-			//cout << length(Jacobian[i]) << endl;
-		}
-	}
 	return Jacobian;
 }
-void softBody::grab(vec3 p)
+void softBody::drag(vec3 p)
 {
 	float minDistance = INT_MAX;
 	int index = -1;
@@ -337,4 +304,5 @@ void softBody::grab(vec3 p)
 		i++;
 	}
 	tetrahedra_vertices[i].pos = p;
+	inverseMass[i] = 0.0f;
 }

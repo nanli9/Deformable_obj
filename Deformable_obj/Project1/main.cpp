@@ -162,9 +162,7 @@ int main()
         
 
         soft->draw(lightingShader);
-
-        /*for (int i = 0; i < mesh.vertices.size(); i++)
-            mesh.vertices[i].Pos.y -= deltaTime;*/
+      
 
         soft->update(deltaTime);
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
@@ -246,18 +244,11 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
         glReadPixels(static_cast<int>(mouseX), static_cast<int>(SCR_HEIGHT - mouseY), 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &depth);
         double x, y, z;
         vec3 Pos = unProject(static_cast<int>(mouseX), static_cast<int>(mouseY), depth);
-        cout << depth << endl;
-        cout << Pos.x << " " << Pos.y << " " << Pos.z << endl;
-        std::cout << "Left mouse button pressed at (" << mouseX << ", " << mouseY << ")\n";
         if (length(Pos - soft->s.center) < soft->s.radius)
         {
-            cout << "clicked" << endl;
-            soft->grab(Pos);
+            soft->drag(Pos);
         }
 
-        
-
-        //camera.ProcessMouseMovement(xoffset, yoffset);
     }
     
     
@@ -266,7 +257,6 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
     if (action == GLFW_PRESS) {
         if (button == GLFW_MOUSE_BUTTON_LEFT) {
             isDragging = true;
-            
         }
         else if (button == GLFW_MOUSE_BUTTON_RIGHT) {
             double mouseX, mouseY;

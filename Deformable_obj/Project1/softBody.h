@@ -53,14 +53,14 @@ public:
 	void solve(float dt);
 	void postSolve(float dt);
 	void squash();
-	void solveVolume(float dt);
-	void solveDistance(float dt);
+	void solveVolume(float volumeCompliance,float dt);
+	void solveDistance(float edgeCompliance,float dt);
 	void update(float dt);
 	void addEdge(int v1,int v2);
 	void getSurfaceMesh();
 	void GenSphere();
 	vec3* getTetrahedrasGradient(vec3 p1, vec3 p2, vec3 p3, vec3 p4);
-	void grab(vec3 p);
+	void drag(vec3 p);
 };
 
 
